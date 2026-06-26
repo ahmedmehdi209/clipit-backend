@@ -20,12 +20,10 @@ def split_video():
     video = request.files["video"]
     duration = int(request.form.get("duration", 60))
 
-    # Save uploaded video
     video_id = str(uuid.uuid4())
     input_path = os.path.join(UPLOAD_FOLDER, f"{video_id}.mp4")
     video.save(input_path)
 
-    # Get video duration using FFmpeg
     result = subprocess.run(
         ["ffprobe", "-v", "error", "-show_entries",
          "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", input_path],
@@ -33,7 +31,6 @@ def split_video():
     )
     total_duration = float(result.stdout.strip())
 
-    # Split video into clips
     clips = []
     start = 0
     clip_index = 1
@@ -59,8 +56,17 @@ def split_video():
 
 @app.route("/download/<filename>")
 def download_clip(filename):
+    if not filename.endswith(".mp4"):
+        return "Invalid file", 400
     path = os.path.join(OUTPUT_FOLDER, filename)
-    return send_file(path, as_attachment=True)
+    if not os.path.exists(path):
+        return "File not found", 404
+    return send_file(
+        path,
+        mimetype="video/mp4",
+        as_attachment=True,
+        download_name=filename
+    )
 
 
 if __name__ == "__main__":
